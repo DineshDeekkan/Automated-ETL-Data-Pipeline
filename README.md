@@ -21,5 +21,6 @@ The ETL pipeline consists of three main tasks orchestrated by an Airflow DAG:
 - Example: Runs at 2:30 PM, 2:45 PM, and 3:00 PM IST (09:00, 09:15, 09:30 UTC).
 
 Author
-Dinesh Deekkan
+**Dinesh Deekkan**
+
 This project was developed during my internship at **C-DAC INDIA (Centre for Development of Advanced Computing)** as part of learning and practicing ETL automation with Apache Airflow.

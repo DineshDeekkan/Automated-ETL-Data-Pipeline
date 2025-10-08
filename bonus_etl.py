@@ -1,6 +1,11 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime
+from pendulum import timezone   # ✅ required
+
+# Filters for DAG run
+job_title = "Data Analyst"
+min_salary = 75000
 
 default_args = {
     'owner': 'dinesh',
@@ -8,38 +13,33 @@ default_args = {
     'retries': 0,
 }
 
-# IST → UTC conversion
-# 11:00 IST → 05:30 UTC
-# 11:15 IST → 05:45 UTC
-# 11:30 IST → 06:00 UTC
+local_tz = timezone("Asia/Kolkata")  # ✅ IST timezone
 
 dag = DAG(
     'bonus_etl',
     default_args=default_args,
     description='ETL DAG to fetch, process, and save employee data with bonus',
-    schedule_interval="30,45,0 5,6 * * *",  # Combined UTC times for all 3 runs
-    start_date=datetime(2025, 9, 16),
+    schedule_interval="0,10,20 10,13,16 * * *",
+    start_date=datetime(2025, 9, 25, 10, 0, tzinfo=local_tz),
     catchup=False,
 )
 
-# Define tasks
 fetch_data = BashOperator(
     task_id='fetch_data',
-    bash_command='python3 /home/dinesh/airflow_etl/fetch_data.py',
+    bash_command=f'python3 /home/dinesh/airflow_etl/fetch_data.py --job_title "{job_title}" --min_salary {min_salary}',
     dag=dag
 )
 
 process_data = BashOperator(
     task_id='process_data',
-    bash_command='python3 /home/dinesh/airflow_etl/process_data.py',
+    bash_command=f'python3 /home/dinesh/airflow_etl/process_data.py --job_title "{job_title}" --min_salary {min_salary}',
     dag=dag
 )
 
 save_results = BashOperator(
     task_id='save_results',
-    bash_command='python3 /home/dinesh/airflow_etl/save_results.py',
+    bash_command=f'python3 /home/dinesh/airflow_etl/save_results.py --job_title "{job_title}" --min_salary {min_salary}',
     dag=dag
 )
 
-# Set task dependencies
 fetch_data >> process_data >> save_results

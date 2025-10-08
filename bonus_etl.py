@@ -1,7 +1,7 @@
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime
-from pendulum import timezone   # ✅ required
+from pendulum import timezone  
 
 # Filters for DAG run
 job_title = "Data Analyst"
@@ -13,7 +13,7 @@ default_args = {
     'retries': 0,
 }
 
-local_tz = timezone("Asia/Kolkata")  # ✅ IST timezone
+local_tz = timezone("Asia/Kolkata")  
 
 dag = DAG(
     'bonus_etl',
@@ -43,3 +43,4 @@ save_results = BashOperator(
 )
 
 fetch_data >> process_data >> save_results
+

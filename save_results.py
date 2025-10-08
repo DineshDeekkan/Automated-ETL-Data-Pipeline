@@ -1,32 +1,54 @@
-from airflow.providers.postgres.hooks.postgres import PostgresHook
+import psycopg2
+import pandas as pd
+from process_data import process_data
+import argparse
 
-def save_results(processed_rows):
-    if not processed_rows:
+def save_results(job_title=None, min_salary=None):
+    # Step 1: Get processed data with filters
+    records = process_data(job_title=job_title, min_salary=min_salary)
+    df = pd.DataFrame(records)
+
+    if df.empty:
+        print("No records found for the given filters.")
         return
-    hook = PostgresHook(postgres_conn_id="postgres_conn")
-    conn = hook.get_conn()
-    cur = conn.cursor()
-    insert_sql = """
-        INSERT INTO employee_summary
-          (job_title, level, type, mode, year, residence, salary, currency, salary_in_usd, location, salary_grade, bonus, updated_at)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
-        ON CONFLICT DO NOTHING;
-    """
-    for row in processed_rows:
-        cur.execute(insert_sql, (
-            row["job_title"], row["level"], row["type"], row["mode"], row["year"], row["residence"],
-            row["salary"], row["currency"], row["salary_in_usd"], row["location"],
-            row["salary_grade"], row["bonus"]
+
+    # Step 2: Connect to PostgreSQL
+    conn = psycopg2.connect(
+        host="localhost",
+        database="cdac",
+        user="dinesh",
+        password="july",
+        port=5432
+    )
+    cursor = conn.cursor()
+
+    # Step 3: Clear previous run’s data
+    cursor.execute("TRUNCATE TABLE employees_bonus;")
+    conn.commit()
+
+    # Step 4: Insert processed data
+    for _, row in df.iterrows():
+        cursor.execute("""
+            INSERT INTO employees_bonus (
+                job_title, level, type, mode, year, residence, salary, currency, salary_in_usd, location,
+                bonus, total_compensation, tax, net_pay
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s);
+        """, (
+            row['job_title'], row['level'], row['type'], row['mode'], row['year'], row['residence'],
+            row['salary'], row['currency'], row['salary_in_usd'], row['location'],
+            row['bonus'], row['total_compensation'], row['tax'], row['net_pay']
         ))
     conn.commit()
-    cur.close()
-    conn.close()
-    print("Saved processed data successfully!")
+    print("Processed data saved successfully in employees_bonus table.")
 
-# For manual testing
+    cursor.close()
+    conn.close()
+
 if __name__ == "__main__":
-    import fetch_data
-    import process_data
-    rows = fetch_data.fetch_data()
-    processed = process_data.process_data(rows)
-    save_results(processed)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--job_title", type=str)
+    parser.add_argument("--min_salary", type=float)
+    args = parser.parse_args()
+
+    save_results(job_title=args.job_title, min_salary=args.min_salary)
+            
